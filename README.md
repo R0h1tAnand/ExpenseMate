@@ -81,8 +81,4 @@ print('Real' if prediction[0][0] < 0.5 else 'Fake')
 
 This project is licensed under the MIT License. Feel free to use and modify the model as needed.
 
-## Acknowledgments
-
-Thanks to the various open-source projects and contributors whose work has made this project possible.
-
 ---
