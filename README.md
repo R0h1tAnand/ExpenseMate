@@ -70,7 +70,7 @@ print('Real' if prediction[0][0] < 0.5 else 'Fake')
 
 1. **Clone the repository**:
     ```bash
-    git clone https://github.com/MaanVader/DeepFake-Detection-model.git
+    git clone https://huggingface.co/MaanVad3r/DeepFake-Detector
     cd DeepFake-Detection-model.git
     ```
 
