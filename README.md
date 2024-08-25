@@ -1,4 +1,13 @@
 ---
+license: mit
+language:
+- en
+metrics:
+- accuracy
+library_name: tf-keras
+pipeline_tag: image-classification
+---
+---
 
 # CNN-Based Deepfake Detection Model
 
@@ -76,4 +85,4 @@ This project is licensed under the MIT License. Feel free to use and modify the 
 
 Thanks to the various open-source projects and contributors whose work has made this project possible.
 
---- 
+---
