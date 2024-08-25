@@ -1,5 +1,3 @@
-Here is the updated markdown description for your model:
-
 ---
 
 # CNN-Based Deepfake Detection Model
