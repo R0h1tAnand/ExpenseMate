@@ -14,7 +14,7 @@ const ExpenseDetail = () => {
       {/* Header */}
       <div className="flex items-center space-x-4">
         <button
-          onClick={() => navigate('/dashboard/expenses')}
+          onClick={() => navigate('/employee/expenses')}
           className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg"
         >
           <ArrowLeftIcon className="h-5 w-5" />

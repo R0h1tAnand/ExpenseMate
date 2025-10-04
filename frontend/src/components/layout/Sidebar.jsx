@@ -41,27 +41,27 @@ const Sidebar = () => {
         ...baseItems,
         {
           name: 'Users',
-          href: '/admin/users',
+          href: '/dashboard/admin/users',
           icon: UsersIcon,
-          current: location.pathname.startsWith('/admin/users'),
+          current: location.pathname.startsWith('/dashboard/admin/users'),
         },
         {
           name: 'Workflows',
-          href: '/admin/workflows',
+          href: '/dashboard/admin/workflows',
           icon: Cog6ToothIcon,
-          current: location.pathname.startsWith('/admin/workflows'),
+          current: location.pathname.startsWith('/dashboard/admin/workflows'),
         },
         {
           name: 'Company',
-          href: '/admin/company',
+          href: '/dashboard/admin/company',
           icon: BuildingOfficeIcon,
-          current: location.pathname.startsWith('/admin/company'),
+          current: location.pathname.startsWith('/dashboard/admin/company'),
         },
         {
           name: 'All Expenses',
-          href: '/admin/expenses',
+          href: '/dashboard/admin/expenses',
           icon: CurrencyDollarIcon,
-          current: location.pathname.startsWith('/admin/expenses'),
+          current: location.pathname.startsWith('/dashboard/admin/expenses'),
         },
       ];
     }
@@ -71,21 +71,21 @@ const Sidebar = () => {
         ...baseItems,
         {
           name: 'My Expenses',
-          href: '/manager/expenses',
+          href: '/dashboard/manager/expenses',
           icon: CurrencyDollarIcon,
-          current: location.pathname.startsWith('/manager/expenses'),
+          current: location.pathname.startsWith('/dashboard/manager/expenses'),
         },
         {
           name: 'Pending Approvals',
-          href: '/manager/approvals',
+          href: '/dashboard/manager/approvals',
           icon: ClockIcon,
-          current: location.pathname.startsWith('/manager/approvals'),
+          current: location.pathname.startsWith('/dashboard/manager/approvals'),
         },
         {
           name: 'Team',
-          href: '/manager/team',
+          href: '/dashboard/manager/team',
           icon: UsersIcon,
-          current: location.pathname.startsWith('/manager/team'),
+          current: location.pathname.startsWith('/dashboard/manager/team'),
         },
       ];
     }
@@ -95,15 +95,15 @@ const Sidebar = () => {
         ...baseItems,
         {
           name: 'My Expenses',
-          href: '/employee/expenses',
+          href: '/dashboard/employee/expenses',
           icon: CurrencyDollarIcon,
-          current: location.pathname.startsWith('/employee/expenses'),
+          current: location.pathname.startsWith('/dashboard/employee/expenses'),
         },
         {
           name: 'Submit Expense',
-          href: '/employee/submit',
+          href: '/dashboard/employee/submit',
           icon: CheckCircleIcon,
-          current: location.pathname === '/employee/submit',
+          current: location.pathname === '/dashboard/employee/submit',
         },
       ];
     }
@@ -112,10 +112,10 @@ const Sidebar = () => {
   };
 
   const getDashboardPath = () => {
-    if (isAdmin()) return '/admin';
-    if (isManager()) return '/manager';
-    if (isEmployee()) return '/employee';
-    return '/employee';
+    if (isAdmin()) return '/dashboard/admin';
+    if (isManager()) return '/dashboard/manager';
+    if (isEmployee()) return '/dashboard/employee';
+    return '/dashboard/employee';
   };
 
   const navigationItems = getNavigationItems();

@@ -4,7 +4,6 @@ import { apiService } from '../../services/api';
 import {
   PlusIcon,
   EyeIcon,
-  PencilIcon,
   FunnelIcon,
   CalendarIcon,
   CurrencyDollarIcon,
@@ -180,7 +179,7 @@ const ExpenseList = () => {
                   Export
                 </button>
                 <Link
-                  to="/dashboard/expenses/new"
+                  to="/employee/submit"
                   className="inline-flex items-center px-6 py-2 bg-white text-primary-600 rounded-lg font-medium hover:bg-gray-100 transition-colors shadow-lg"
                 >
                   <PlusIcon className="h-5 w-5 mr-2" />
@@ -493,15 +492,6 @@ const ExpenseList = () => {
                                 <EyeIcon className="h-4 w-4 mr-1" />
                                 View
                               </Link>
-                              {(expense.status === 'DRAFT' || expense.status === 'REJECTED') && (
-                                <Link
-                                  to={`/dashboard/expenses/${expense.expenseId}/edit`}
-                                  className="inline-flex items-center px-3 py-1.5 text-sm bg-yellow-100 text-yellow-700 rounded-lg hover:bg-yellow-200 transition-colors"
-                                >
-                                  <PencilIcon className="h-4 w-4 mr-1" />
-                                  Edit
-                                </Link>
-                              )}
                             </div>
                             <span className="text-xs text-gray-400">
                               Submitted {new Date(expense.submissionDate).toLocaleDateString()}
@@ -598,15 +588,6 @@ const ExpenseList = () => {
                               >
                                 <EyeIcon className="h-5 w-5" />
                               </Link>
-                              {(expense.status === 'DRAFT' || expense.status === 'REJECTED') && (
-                                <Link
-                                  to={`/dashboard/expenses/${expense.expenseId}/edit`}
-                                  className="p-2 text-yellow-600 hover:text-yellow-800 hover:bg-yellow-50 rounded-lg transition-colors"
-                                  title="Edit Expense"
-                                >
-                                  <PencilIcon className="h-5 w-5" />
-                                </Link>
-                              )}
                             </div>
                           </td>
                         </tr>
