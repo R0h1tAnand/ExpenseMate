@@ -1,20 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { 
+  ClockIcon, 
+  CurrencyDollarIcon, 
+  UserGroupIcon, 
+  CheckCircleIcon, 
+  XCircleIcon,
+  EyeIcon,
+  DocumentTextIcon
+} from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/AuthContext';
 import { apiService } from '../../services/api';
-import {
-  ClockIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  CurrencyDollarIcon,
-  UserGroupIcon,
-  CalendarIcon,
-  EyeIcon,
-  DocumentTextIcon,
-  BellIcon,
-  PlusIcon,
-  ArrowRightIcon,
-} from '@heroicons/react/24/outline';
-import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 const ManagerDashboard = () => {
@@ -29,8 +25,8 @@ const ManagerDashboard = () => {
   const [pendingExpenses, setPendingExpenses] = useState([]);
   const [recentApprovals, setRecentApprovals] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
+  const [allTeamExpenses, setAllTeamExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [quickApprovalLoading, setQuickApprovalLoading] = useState({});
 
   useEffect(() => {
     fetchDashboardData();
@@ -39,15 +35,28 @@ const ManagerDashboard = () => {
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
-      
-      // Fetch pending approvals
-      const pendingResponse = await apiService.expenses.getPending();
-      const pending = Array.isArray(pendingResponse.data.data) ? pendingResponse.data.data : [];
-      setPendingExpenses(pending.slice(0, 5)); // Show top 5
+      console.log('Current user:', user);
+      console.log('User role:', user?.role);
+      console.log('User ID:', user?.userId);
 
-      // Fetch team members
+      // Get pending approvals
+      let pending = [];
+      try {
+        const pendingResponse = await apiService.expenses.getPending();
+        console.log('Pending Response:', pendingResponse.data);
+        pending = Array.isArray(pendingResponse.data.data) ? pendingResponse.data.data : [];
+        console.log('Pending expenses:', pending);
+      } catch (error) {
+        console.error('Failed to fetch pending approvals:', error);
+        pending = [];
+      }
+      setPendingExpenses(pending.slice(0, 5)); // Show first 5 for dashboard
+
+      // Get team members
       const teamResponse = await apiService.users.getSubordinates();
+      console.log('Team Response:', teamResponse.data);
       const team = Array.isArray(teamResponse.data.data) ? teamResponse.data.data : [];
+      console.log('Team members:', team);
       setTeamMembers(team);
 
       // Fetch team expenses for current month
@@ -61,11 +70,28 @@ const ManagerDashboard = () => {
           dateFrom: firstDay.toISOString().split('T')[0],
           dateTo: lastDay.toISOString().split('T')[0],
         });
+        console.log('Team Expenses Response:', expensesResponse.data);
         teamExpenses = Array.isArray(expensesResponse.data.data) ? expensesResponse.data.data : [];
+        console.log('Team expenses:', teamExpenses);
       } catch (error) {
         console.error('Failed to fetch team expenses:', error);
         teamExpenses = [];
       }
+
+      // Get all team expenses (not date-filtered) for the main display
+      let allExpenses = [];
+      try {
+        const allExpensesResponse = await apiService.expenses.getAll({
+          limit: 50, // Get recent 50 expenses
+        });
+        console.log('All Expenses Response:', allExpensesResponse.data);
+        allExpenses = Array.isArray(allExpensesResponse.data.data) ? allExpensesResponse.data.data : [];
+        console.log('All team expenses:', allExpenses);
+      } catch (error) {
+        console.error('Failed to fetch all team expenses:', error);
+        allExpenses = [];
+      }
+      setAllTeamExpenses(allExpenses);
 
       // Get recent approvals (approved/rejected in last 7 days)
       let approvals = [];
@@ -98,8 +124,9 @@ const ManagerDashboard = () => {
         teamExpenses: teamExpenses.length,
         totalAmount,
       });
+
     } catch (error) {
-      console.error('Failed to fetch dashboard data:', error);
+      console.error('Error fetching dashboard data:', error);
       toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
@@ -108,56 +135,48 @@ const ManagerDashboard = () => {
 
   const handleQuickAction = async (expenseId, action) => {
     try {
-      setQuickApprovalLoading(prev => ({ ...prev, [expenseId]: true }));
-      
-      const payload = {
-        comments: `Quick ${action.toLowerCase()} from manager dashboard`,
-      };
-
       if (action === 'APPROVED') {
-        await apiService.expenses.approve(expenseId, payload);
-        toast.success('Expense approved successfully!');
+        await apiService.expenses.approve(expenseId, {
+          comment: 'Quick approval from dashboard'
+        });
+        toast.success('Expense approved successfully');
       } else if (action === 'REJECTED') {
-        await apiService.expenses.reject(expenseId, payload);
-        toast.success('Expense rejected successfully!');
+        await apiService.expenses.reject(expenseId, {
+          comment: 'Quick rejection from dashboard'
+        });
+        toast.success('Expense rejected successfully');
       }
-      
+
       // Refresh data
       fetchDashboardData();
     } catch (error) {
-      console.error(`Failed to ${action} expense:`, error);
-      const errorMessage = error.response?.data?.message || `Failed to ${action.toLowerCase()} expense`;
-      toast.error(errorMessage);
-    } finally {
-      setQuickApprovalLoading(prev => ({ ...prev, [expenseId]: false }));
+      console.error('Error processing expense action:', error);
+      toast.error(`Failed to ${action.toLowerCase()} expense`);
     }
   };
 
   const getStatusBadgeClass = (status) => {
     switch (status) {
-      case 'APPROVED':
-        return 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200';
       case 'PENDING':
-        return 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200';
+        return 'px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full';
+      case 'APPROVED':
+        return 'px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full';
       case 'REJECTED':
-        return 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200';
+        return 'px-2 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full';
       case 'DRAFT':
-        return 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200';
+        return 'px-2 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded-full';
       default:
-        return 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200';
+        return 'px-2 py-1 bg-gray-100 text-gray-800 text-xs font-medium rounded-full';
     }
   };
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'APPROVED':
-        return <CheckCircleIcon className="h-4 w-4 text-green-600" />;
-      case 'PENDING':
-        return <ClockIcon className="h-4 w-4 text-yellow-600" />;
-      case 'REJECTED':
-        return <XCircleIcon className="h-4 w-4 text-red-600" />;
-      case 'DRAFT':
-        return <DocumentTextIcon className="h-4 w-4 text-gray-600" />;
+  const getCategoryIcon = (category) => {
+    switch (category) {
+      case 'TRAVEL':
+      case 'TRANSPORTATION':
+        return <ClockIcon className="h-4 w-4 text-blue-600" />;
+      case 'MEALS':
+        return <DocumentTextIcon className="h-4 w-4 text-orange-600" />;
       default:
         return <DocumentTextIcon className="h-4 w-4 text-gray-600" />;
     }
@@ -184,30 +203,38 @@ const ManagerDashboard = () => {
               <div>
                 <h1 className="text-3xl font-bold mb-2">Manager Dashboard</h1>
                 <p className="text-purple-100 text-lg">
-                  Welcome back, {user?.firstName}! Manage your team's expense approvals.
+                  Welcome back, {user?.firstName}! Here's what's happening with your team.
                 </p>
               </div>
-              <div className="mt-4 sm:mt-0 flex items-center space-x-4">
-                {stats.pendingApprovals > 0 && (
-                  <div className="bg-yellow-500 text-white px-4 py-2 rounded-lg flex items-center space-x-2 shadow-lg">
-                    <BellIcon className="h-5 w-5" />
-                    <span className="font-medium">{stats.pendingApprovals} Pending</span>
-                  </div>
-                )}
-                <Link
-                  to="/dashboard/approvals"
-                  className="inline-flex items-center px-6 py-2 bg-white text-purple-600 rounded-lg font-medium hover:bg-gray-100 transition-colors shadow-lg"
-                >
-                  View All Approvals
-                  <ArrowRightIcon className="h-5 w-5 ml-2" />
-                </Link>
+              <div className="mt-4 sm:mt-0 flex space-x-4">
+                <div className="text-center">
+                  <p className="text-2xl font-bold">{stats.pendingApprovals}</p>
+                  <p className="text-purple-100 text-sm">Pending</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-2xl font-bold">{teamMembers.length}</p>
+                  <p className="text-purple-100 text-sm">Team Size</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Stats Dashboard */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        {/* Debug Panel - Remove in production */}
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+          <h4 className="text-sm font-medium text-yellow-800 mb-2">Debug Information:</h4>
+          <div className="text-xs text-yellow-700 space-y-1">
+            <p>User Role: {user?.role}</p>
+            <p>User ID: {user?.userId}</p>
+            <p>Team Members Count: {teamMembers.length}</p>
+            <p>Pending Expenses Count: {pendingExpenses.length}</p>
+            <p>All Team Expenses Count: {allTeamExpenses.length}</p>
+            <p>Recent Approvals Count: {recentApprovals.length}</p>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
             <div className="flex items-center">
               <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
@@ -247,23 +274,11 @@ const ManagerDashboard = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
             <div className="flex items-center">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <UserGroupIcon className="h-6 w-6 text-blue-600" />
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Team Members</p>
-                <p className="text-2xl font-bold text-blue-600">{teamMembers.length}</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
-            <div className="flex items-center">
-              <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-                <CurrencyDollarIcon className="h-6 w-6 text-emerald-600" />
+                <CurrencyDollarIcon className="h-6 w-6 text-blue-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-500">Total Approved</p>
-                <p className="text-lg font-bold text-emerald-600">
+                <p className="text-2xl font-bold text-blue-600">
                   {company?.defaultCurrency} {stats.totalAmount.toLocaleString()}
                 </p>
               </div>
@@ -271,197 +286,175 @@ const ManagerDashboard = () => {
           </div>
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        {/* Main Content */}
+        <div className="space-y-8">
           {/* Pending Approvals */}
-          <div className="xl:col-span-2">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 px-6 py-4 border-b border-gray-200">
-                <div className="flex justify-between items-center">
-                  <h3 className="text-xl font-semibold text-gray-900 flex items-center">
-                    <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center mr-3">
-                      <ClockIcon className="h-5 w-5 text-white" />
-                    </div>
-                    Pending Approvals
-                  </h3>
-                  <Link
-                    to="/dashboard/approvals"
-                    className="text-sm text-purple-600 hover:text-purple-800 font-medium"
-                  >
-                    View All ({stats.pendingApprovals})
-                  </Link>
-                </div>
-                <p className="text-gray-600 mt-1">Review and approve employee expense submissions</p>
-              </div>
-
-              <div className="divide-y divide-gray-200">
-                {pendingExpenses.length > 0 ? (
-                  pendingExpenses.map((expense) => (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-900">Pending Approvals</h3>
+              <span className="px-3 py-1 bg-yellow-100 text-yellow-800 text-sm font-medium rounded-full">
+                {pendingExpenses.length} pending
+              </span>
+            </div>
+            <div className="overflow-hidden">
+              {pendingExpenses.length > 0 ? (
+                <div className="divide-y divide-gray-200">
+                  {pendingExpenses.map((expense) => (
                     <div key={expense.expenseId} className="p-6 hover:bg-gray-50 transition-colors">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start space-x-4 flex-1">
-                          <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                            <CurrencyDollarIcon className="h-6 w-6 text-yellow-600" />
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex-shrink-0 h-12 w-12">
+                            <div className="h-12 w-12 rounded-full bg-purple-100 flex items-center justify-center">
+                              <span className="text-purple-600 font-medium text-sm">
+                                {expense.submittedBy?.firstName?.[0] || 'U'}{expense.submittedBy?.lastName?.[0] || 'N'}
+                              </span>
+                            </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <h4 className="font-semibold text-gray-900 mb-1">
-                              {expense.description}
-                            </h4>
-                            <div className="flex items-center text-sm text-gray-500 space-x-4 mb-2">
-                              <span className="flex items-center">
-                                <UserIcon className="h-4 w-4 mr-1" />
-                                {expense.submittedBy?.firstName} {expense.submittedBy?.lastName}
-                              </span>
-                              <span className="flex items-center">
-                                <CalendarIcon className="h-4 w-4 mr-1" />
-                                {new Date(expense.expenseDate || expense.submissionDate).toLocaleDateString()}
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <span className="text-lg font-bold text-gray-900">
-                                  {company?.defaultCurrency} {parseFloat(expense.amountInDefaultCurrency || 0).toLocaleString()}
-                                </span>
-                                {expense.originalCurrency !== company?.defaultCurrency && (
-                                  <span className="text-sm text-gray-500 ml-2">
-                                    ({expense.originalCurrency} {parseFloat(expense.originalAmount || 0).toLocaleString()})
-                                  </span>
-                                )}
-                                <span className="ml-3 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                                  {expense.category}
-                                </span>
-                              </div>
-                            </div>
-                            {expense.notes && (
-                              <p className="text-sm text-gray-600 mt-2 bg-gray-50 p-3 rounded-lg">
-                                {expense.notes.length > 100 ? `${expense.notes.substring(0, 100)}...` : expense.notes}
+                            <div className="flex items-center space-x-2">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {expense.description}
                               </p>
-                            )}
+                              {getCategoryIcon(expense.category)}
+                            </div>
+                            <p className="text-sm text-gray-500">
+                              {expense.submittedBy?.firstName} {expense.submittedBy?.lastName} • 
+                              {expense.category} • 
+                              {new Date(expense.submissionDate).toLocaleDateString()}
+                            </p>
                           </div>
                         </div>
-                        
-                        <div className="flex flex-col space-y-2 ml-4">
-                          <div className="flex space-x-2">
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-gray-900">
+                            {company?.defaultCurrency} {parseFloat(expense.amountInDefaultCurrency || 0).toLocaleString()}
+                          </p>
+                          <div className="flex space-x-2 mt-2">
                             <button
                               onClick={() => handleQuickAction(expense.expenseId, 'APPROVED')}
-                              disabled={quickApprovalLoading[expense.expenseId]}
-                              className="inline-flex items-center px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors disabled:opacity-50"
+                              className="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full hover:bg-green-200 transition-colors"
                             >
-                              {quickApprovalLoading[expense.expenseId] ? (
-                                <div className="animate-spin rounded-full h-3 w-3 border-b border-green-600 mr-1"></div>
-                              ) : (
-                                <CheckCircleIcon className="h-3 w-3 mr-1" />
-                              )}
                               Approve
                             </button>
                             <button
                               onClick={() => handleQuickAction(expense.expenseId, 'REJECTED')}
-                              disabled={quickApprovalLoading[expense.expenseId]}
-                              className="inline-flex items-center px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50"
+                              className="px-3 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full hover:bg-red-200 transition-colors"
                             >
-                              {quickApprovalLoading[expense.expenseId] ? (
-                                <div className="animate-spin rounded-full h-3 w-3 border-b border-red-600 mr-1"></div>
-                              ) : (
-                                <XCircleIcon className="h-3 w-3 mr-1" />
-                              )}
                               Reject
                             </button>
+                            <button className="px-2 py-1 text-purple-600 hover:text-purple-800 transition-colors">
+                              <EyeIcon className="h-4 w-4" />
+                            </button>
                           </div>
-                          <Link
-                            to={`/dashboard/expenses/${expense.expenseId}`}
-                            className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-100 rounded-lg hover:bg-purple-200 transition-colors"
-                          >
-                            <EyeIcon className="h-3 w-3 mr-1" />
-                            Details
-                          </Link>
                         </div>
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="p-12 text-center">
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <CheckCircleIcon className="h-8 w-8 text-green-600" />
-                    </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">All caught up!</h3>
-                    <p className="text-gray-500">No pending expense approvals at the moment.</p>
-                  </div>
-                )}
-              </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <ClockIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No pending approvals</h3>
+                  <p className="text-gray-500">
+                    All caught up! No expenses waiting for your approval.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Team Overview & Recent Activity */}
-          <div className="space-y-8">
-            {/* Team Overview */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                  <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
-                    <UserGroupIcon className="h-5 w-5 text-white" />
-                  </div>
-                  Team Overview
-                </h3>
-              </div>
-              <div className="p-6">
-                {teamMembers.length > 0 ? (
-                  <div className="space-y-4">
-                    {teamMembers.slice(0, 5).map((member) => (
-                      <div key={member.userId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
-                            <span className="text-white text-sm font-medium">
-                              {member.firstName?.[0]}{member.lastName?.[0]}
-                            </span>
+          {/* All Team Expenses Section */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h3 className="text-lg font-semibold text-gray-900">All Team Expenses</h3>
+              <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
+                {allTeamExpenses.length} total
+              </span>
+            </div>
+            <div className="overflow-hidden">
+              {allTeamExpenses.length > 0 ? (
+                <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
+                  {allTeamExpenses.map((expense) => (
+                    <div key={expense.expenseId} className="p-4 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className="flex-shrink-0 h-10 w-10">
+                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                              <span className="text-blue-600 font-medium text-sm">
+                                {expense.submittedBy?.firstName?.[0] || 'U'}{expense.submittedBy?.lastName?.[0] || 'N'}
+                              </span>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {member.firstName} {member.lastName}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2">
+                              <p className="text-sm font-medium text-gray-900 truncate">
+                                {expense.description}
+                              </p>
+                              <span className={getStatusBadgeClass(expense.status)}>
+                                {expense.status}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-500">
+                              {expense.submittedBy?.firstName} {expense.submittedBy?.lastName} • 
+                              {expense.category} • 
+                              {new Date(expense.submissionDate).toLocaleDateString()}
                             </p>
-                            <p className="text-sm text-gray-500">{member.email}</p>
                           </div>
                         </div>
-                        <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded">
-                          {member.role}
-                        </span>
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-gray-900">
+                            {company?.defaultCurrency} {parseFloat(expense.amountInDefaultCurrency || 0).toLocaleString()}
+                          </p>
+                          {expense.status === 'PENDING' && (
+                            <div className="flex space-x-2 mt-2">
+                              <button
+                                onClick={() => handleQuickAction(expense.expenseId, 'APPROVED')}
+                                className="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full hover:bg-green-200 transition-colors"
+                              >
+                                Approve
+                              </button>
+                              <button
+                                onClick={() => handleQuickAction(expense.expenseId, 'REJECTED')}
+                                className="px-3 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full hover:bg-red-200 transition-colors"
+                              >
+                                Reject
+                              </button>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    ))}
-                    {teamMembers.length > 5 && (
-                      <p className="text-sm text-gray-500 text-center">
-                        +{teamMembers.length - 5} more team members
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center py-6">
-                    <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-500">No team members assigned yet.</p>
-                  </div>
-                )}
-              </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <DocumentTextIcon className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Team Expenses</h3>
+                  <p className="text-gray-500">
+                    No expenses have been submitted by your team members yet.
+                  </p>
+                </div>
+              )}
             </div>
+          </div>
 
+          {/* Bottom Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Recent Activity */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
               <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-200">
-                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-                  <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center mr-3">
-                    <DocumentTextIcon className="h-5 w-5 text-white" />
-                  </div>
-                  Recent Activity
-                </h3>
+                <h3 className="text-lg font-semibold text-gray-900">Recent Activity</h3>
               </div>
               <div className="p-6">
                 {recentApprovals.length > 0 ? (
                   <div className="space-y-4">
                     {recentApprovals.map((expense) => (
-                      <div key={expense.expenseId} className="flex items-center space-x-3">
-                        <div className="flex-shrink-0">
-                          {getStatusIcon(expense.status)}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-900 truncate">
+                      <div key={expense.expenseId} className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">
                             {expense.description}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {expense.submittedBy?.firstName} {expense.submittedBy?.lastName}
                           </p>
                           <p className="text-xs text-gray-500">
                             {company?.defaultCurrency} {parseFloat(expense.amountInDefaultCurrency || 0).toLocaleString()} • 
@@ -504,7 +497,7 @@ const ManagerDashboard = () => {
                   <UserGroupIcon className="h-5 w-5 mr-2" />
                   Manage Team
                 </Link>
-
+                
                 <Link
                   to="/dashboard/expenses"
                   className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"

@@ -31,6 +31,9 @@ import EmployeeDashboard from './pages/employee/Dashboard';
 import EmployeeExpenses from './pages/employee/ExpenseList';
 import EmployeeSubmit from './pages/employee/NewExpense';
 
+// Public pages
+import Home from './pages/Home';
+
 // Shared pages
 import ExpenseDetails from './pages/shared/ExpenseDetails';
 import Profile from './pages/shared/Profile';
@@ -47,6 +50,14 @@ function App() {
             <Route path="/" element={<Home />} />
             
             {/* Public auth routes */}
+            <Route
+              path="/"
+              element={
+                <PublicRoute>
+                  <Home />
+                </PublicRoute>
+              }
+            />
             <Route
               path="/login"
               element={
@@ -193,9 +204,9 @@ function App() {
                 }
               />
 
-              {/* Redirect dashboard root to appropriate role dashboard */}
+              {/* Redirect dashboard root to appropriate dashboard */}
               <Route
-                index
+                path="/dashboard"
                 element={<Navigate to="/dashboard/employee" replace />}
               />
             </Route>
