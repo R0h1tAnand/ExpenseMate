@@ -9,6 +9,9 @@ import {
   DocumentArrowDownIcon,
   CalendarIcon,
   UserIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -31,6 +34,10 @@ const ManagerExpenses = () => {
     rejected: 0,
     totalAmount: 0,
   });
+  const [selectedExpense, setSelectedExpense] = useState(null);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
+  const [approvalAction, setApprovalAction] = useState('');
+  const [approvalComment, setApprovalComment] = useState('');
 
   useEffect(() => {
     fetchExpenses();
@@ -79,6 +86,46 @@ const ManagerExpenses = () => {
       setTeamMembers(Array.isArray(response.data.data) ? response.data.data : []);
     } catch (error) {
       console.error('Failed to fetch team members:', error);
+    }
+  };
+
+  const handleApproval = (expense, action) => {
+    setSelectedExpense(expense);
+    setApprovalAction(action);
+    setApprovalComment('');
+    setShowApprovalModal(true);
+  };
+
+  const submitApproval = async () => {
+    if (!selectedExpense) return;
+
+    try {
+      if (approvalAction === 'APPROVE') {
+        await apiService.expenses.approve(selectedExpense.expenseId, {
+          comment: approvalComment || undefined
+        });
+        toast.success('Expense approved successfully');
+      } else if (approvalAction === 'REJECT') {
+        if (!approvalComment || approvalComment.trim() === '') {
+          toast.error('Rejection comment is required');
+          return;
+        }
+        await apiService.expenses.reject(selectedExpense.expenseId, {
+          comment: approvalComment
+        });
+        toast.success('Expense rejected successfully');
+      }
+
+      setShowApprovalModal(false);
+      setSelectedExpense(null);
+      setApprovalComment('');
+      setApprovalAction('');
+      
+      // Refresh expenses
+      fetchExpenses();
+    } catch (error) {
+      console.error('Failed to process approval:', error);
+      toast.error('Failed to process approval');
     }
   };
 
@@ -384,16 +431,22 @@ const ManagerExpenses = () => {
                       <div className="flex-shrink-0 h-8 w-8">
                         <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
                           <span className="text-primary-600 font-medium text-xs">
-                            {expense.submittedBy?.firstName[0]}{expense.submittedBy?.lastName[0]}
+                            {expense.submittedBy ? 
+                              `${expense.submittedBy.firstName?.[0] || ''}${expense.submittedBy.lastName?.[0] || ''}` : 
+                              'NA'
+                            }
                           </span>
                         </div>
                       </div>
                       <div className="ml-3">
                         <div className="text-sm font-medium text-gray-900">
-                          {expense.submittedBy?.firstName} {expense.submittedBy?.lastName}
+                          {expense.submittedBy ? 
+                            `${expense.submittedBy.firstName || ''} ${expense.submittedBy.lastName || ''}`.trim() || 'Unknown User' :
+                            'Unknown User'
+                          }
                         </div>
                         <div className="text-sm text-gray-500">
-                          {expense.submittedBy?.email}
+                          {expense.submittedBy?.email || 'No email'}
                         </div>
                       </div>
                     </div>
@@ -410,12 +463,35 @@ const ManagerExpenses = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <button
-                      onClick={() => {/* Handle view expense */}}
-                      className="text-primary-600 hover:text-primary-900"
-                    >
-                      <EyeIcon className="h-5 w-5" />
-                    </button>
+                    <div className="flex items-center justify-end space-x-2">
+                      <button
+                        onClick={() => {/* Handle view expense */}}
+                        className="text-primary-600 hover:text-primary-900"
+                        title="View Details"
+                      >
+                        <EyeIcon className="h-5 w-5" />
+                      </button>
+                      
+                      {/* Show approve/reject buttons for PENDING and DRAFT expenses */}
+                      {(expense.status === 'PENDING' || expense.status === 'DRAFT') && (
+                        <>
+                          <button
+                            onClick={() => handleApproval(expense, 'APPROVE')}
+                            className="text-green-600 hover:text-green-900 p-1 rounded-full hover:bg-green-50"
+                            title="Approve"
+                          >
+                            <CheckCircleIcon className="h-5 w-5" />
+                          </button>
+                          <button
+                            onClick={() => handleApproval(expense, 'REJECT')}
+                            className="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-50"
+                            title="Reject"
+                          >
+                            <XCircleIcon className="h-5 w-5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -433,6 +509,109 @@ const ManagerExpenses = () => {
           </div>
         )}
       </div>
+
+      {/* Approval Modal */}
+      {showApprovalModal && selectedExpense && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-full max-w-2xl shadow-lg rounded-md bg-white">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">
+                {approvalAction === 'APPROVE' ? 'Approve' : 'Reject'} Expense
+              </h3>
+              <button
+                onClick={() => {
+                  setShowApprovalModal(false);
+                  setSelectedExpense(null);
+                  setApprovalComment('');
+                  setApprovalAction('');
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <XCircleIcon className="h-6 w-6" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              {/* Expense Details */}
+              <div className="mb-6">
+                <h4 className="text-sm font-medium text-gray-900 mb-2">Expense Details</h4>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-sm text-gray-500">Description:</span>
+                      <p className="font-medium">{selectedExpense.description}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-500">Amount:</span>
+                      <p className="font-medium">
+                        {company?.defaultCurrency} {parseFloat(selectedExpense.amountInDefaultCurrency || 0).toLocaleString()}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-500">Category:</span>
+                      <p className="font-medium">{selectedExpense.category}</p>
+                    </div>
+                    <div>
+                      <span className="text-sm text-gray-500">Submitted By:</span>
+                      <p className="font-medium">
+                        {selectedExpense.submittedBy ? 
+                          `${selectedExpense.submittedBy.firstName || ''} ${selectedExpense.submittedBy.lastName || ''}`.trim() || 'Unknown User' :
+                          'Unknown User'
+                        }
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Comment Section */}
+              <div className="mb-6">
+                <label htmlFor="approvalComment" className="block text-sm font-medium text-gray-700 mb-2">
+                  {approvalAction === 'APPROVE' ? 'Comment (Optional)' : 'Rejection Reason (Required)'}
+                </label>
+                <textarea
+                  id="approvalComment"
+                  rows={4}
+                  value={approvalComment}
+                  onChange={(e) => setApprovalComment(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                  placeholder={
+                    approvalAction === 'APPROVE' 
+                      ? 'Add any comments about this approval...' 
+                      : 'Please provide a reason for rejection...'
+                  }
+                  required={approvalAction === 'REJECT'}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => {
+                    setShowApprovalModal(false);
+                    setSelectedExpense(null);
+                    setApprovalComment('');
+                    setApprovalAction('');
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={submitApproval}
+                  className={`px-4 py-2 rounded-lg text-white ${
+                    approvalAction === 'APPROVE' 
+                      ? 'bg-green-600 hover:bg-green-700' 
+                      : 'bg-red-600 hover:bg-red-700'
+                  }`}
+                >
+                  {approvalAction === 'APPROVE' ? 'Approve' : 'Reject'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

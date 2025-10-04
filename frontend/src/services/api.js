@@ -127,6 +127,16 @@ export const apiService = {
     approve: (id, data) => api.post(API_ENDPOINTS.EXPENSES.APPROVE(id), data),
     reject: (id, data) => api.post(API_ENDPOINTS.EXPENSES.REJECT(id), data),
     getPending: (params) => api.get(API_ENDPOINTS.EXPENSES.PENDING, { params }),
+    getPendingApprovals: (params) => api.get(API_ENDPOINTS.EXPENSES.PENDING, { params }),
+    updateStatus: (id, data) => {
+      // Legacy support - map to approve/reject
+      if (data.status === 'APPROVED') {
+        return api.post(API_ENDPOINTS.EXPENSES.APPROVE(id), data);
+      } else if (data.status === 'REJECTED') {
+        return api.post(API_ENDPOINTS.EXPENSES.REJECT(id), data);
+      }
+      return api.put(API_ENDPOINTS.EXPENSES.BY_ID(id), data);
+    },
   },
 
   // Workflows

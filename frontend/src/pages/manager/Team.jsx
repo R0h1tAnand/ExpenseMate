@@ -36,7 +36,7 @@ const TeamOverview = () => {
       setLoading(true);
 
       // Fetch team members
-      const teamResponse = await apiService.users.getTeamMembers();
+      const teamResponse = await apiService.users.getSubordinates();
       const team = teamResponse.data.data;
       setTeamMembers(team);
 

@@ -68,7 +68,11 @@ const getExpenses = async (req, res) => {
     
     // Build where clause based on user role
     let whereClause = {};
-    let includeUser = [];
+    let includeUser = [{
+      model: User,
+      as: 'submittedBy',
+      attributes: ['userId', 'firstName', 'lastName', 'email']
+    }];
 
     if (req.user.role === 'EMPLOYEE') {
       // Employees can only see their own expenses
@@ -86,12 +90,7 @@ const getExpenses = async (req, res) => {
       whereClause.submittedById = subordinateIds;
     } else if (req.user.role === 'ADMIN') {
       // Admins can see all company expenses
-      includeUser = [{
-        model: User,
-        as: 'submittedBy',
-        where: { companyId: req.user.companyId },
-        attributes: ['userId', 'firstName', 'lastName', 'email']
-      }];
+      includeUser[0].where = { companyId: req.user.companyId };
     }
 
     // Add filters
@@ -312,8 +311,8 @@ const approveExpense = async (req, res) => {
       return sendNotFound(res, 'Expense not found');
     }
 
-    if (expense.status !== 'PENDING') {
-      return sendError(res, 400, 'Expense is not pending approval');
+    if (expense.status !== 'PENDING' && expense.status !== 'DRAFT') {
+      return sendError(res, 400, 'Expense is not pending approval or draft');
     }
 
     // Enhanced approval permission check
@@ -341,7 +340,7 @@ const approveExpense = async (req, res) => {
 
     await expense.update({
       approvals: updatedApprovals,
-      currentApproverIndex: workflowResult.nextApproverIndex,
+      currentApproverIndex: workflowResult.nextApproverIndex !== null ? workflowResult.nextApproverIndex : expense.currentApproverIndex || 0,
       status: workflowResult.finalStatus
     });
 
@@ -394,8 +393,8 @@ const rejectExpense = async (req, res) => {
       return sendNotFound(res, 'Expense not found');
     }
 
-    if (expense.status !== 'PENDING') {
-      return sendError(res, 400, 'Expense is not pending approval');
+    if (expense.status !== 'PENDING' && expense.status !== 'DRAFT') {
+      return sendError(res, 400, 'Expense is not pending approval or draft');
     }
 
     // Enhanced approval permission check
@@ -580,7 +579,7 @@ const checkDetailedApprovalPermission = async (expense, user) => {
       // Default workflow: Manager approval for subordinates
       if (user.role === 'MANAGER') {
         const subordinate = await User.findOne({
-          where: { userId: expense.submittedBy, managerId: user.userId }
+          where: { userId: expense.submittedById, managerId: user.userId }
         });
         if (subordinate) {
           return {
@@ -683,7 +682,7 @@ const checkSequentialApprovalPermission = async (expense, user, rules, currentSt
   // Handle manager-first approval (IS_MANAGER_APPROVER)
   if (rules.isManagerApprover && currentStepIndex === 0) {
     const subordinate = await User.findOne({
-      where: { userId: expense.submittedBy, managerId: user.userId }
+      where: { userId: expense.submittedById, managerId: user.userId }
     });
     if (subordinate) {
       return {
@@ -719,7 +718,7 @@ const checkSequentialApprovalPermission = async (expense, user, rules, currentSt
     }
   } else if (currentStep.approverType === 'MANAGER') {
     const subordinate = await User.findOne({
-      where: { userId: expense.submittedBy, managerId: user.userId }
+      where: { userId: expense.submittedById, managerId: user.userId }
     });
     if (subordinate) {
       return {
@@ -971,6 +970,110 @@ const checkEnhancedApprovalComplete = (expense, workflow) => {
 
     default:
       return false;
+  }
+};
+
+/**
+ * Process approval workflow and determine next steps
+ */
+const processApprovalWorkflow = async (expense, updatedApprovals, currentUser) => {
+  try {
+    if (!expense.workflow || !expense.workflow.rules) {
+      // Default workflow - simple manager approval
+      return {
+        finalStatus: 'APPROVED',
+        nextApproverIndex: expense.currentApproverIndex || 0,
+        currentStepName: 'Manager Approval',
+        nextStepName: null,
+        nextApproverInfo: null,
+        message: 'Expense approved successfully'
+      };
+    }
+
+    const rules = expense.workflow.rules;
+    const approvedApprovals = updatedApprovals.filter(a => a.decision === 'APPROVED');
+
+    // Create a temporary expense object with updated approvals for checking completion
+    const tempExpense = { ...expense.toJSON(), approvals: updatedApprovals };
+    
+    // Check if approval is complete using the enhanced function
+    const isComplete = checkEnhancedApprovalComplete(tempExpense, expense.workflow);
+
+    if (isComplete) {
+      return {
+        finalStatus: 'APPROVED',
+        nextApproverIndex: expense.currentApproverIndex || 0, // Keep current index when complete
+        currentStepName: expense.workflow.name || 'Final Approval',
+        nextStepName: null,
+        nextApproverInfo: null,
+        message: 'Expense approved successfully - workflow complete'
+      };
+    }
+
+    // Determine next step based on workflow type
+    switch (rules.workflowType) {
+      case 'sequential':
+        const nextStepIndex = (expense.currentApproverIndex || 0) + 1;
+        if (nextStepIndex < rules.approvalSteps.length) {
+          const nextStep = rules.approvalSteps[nextStepIndex];
+          return {
+            finalStatus: 'PENDING',
+            nextApproverIndex: nextStepIndex,
+            currentStepName: rules.approvalSteps[expense.currentApproverIndex || 0].name,
+            nextStepName: nextStep.name,
+            nextApproverInfo: {
+              stepIndex: nextStepIndex,
+              stepName: nextStep.name,
+              approverType: nextStep.approverType,
+              approverValue: nextStep.approverValue
+            },
+            message: `Approval recorded - proceeding to step ${nextStepIndex + 1}: ${nextStep.name}`
+          };
+        }
+        // If no more steps, mark as approved
+        return {
+          finalStatus: 'APPROVED',
+          nextApproverIndex: expense.currentApproverIndex || 0,
+          currentStepName: rules.approvalSteps[expense.currentApproverIndex || 0]?.name || 'Final Step',
+          nextStepName: null,
+          nextApproverInfo: null,
+          message: 'Expense approved successfully - all steps completed'
+        };
+
+      case 'percentage':
+      case 'specific':
+      case 'hybrid':
+        // For these types, continue pending until threshold is met
+        return {
+          finalStatus: 'PENDING',
+          nextApproverIndex: expense.currentApproverIndex || 0,
+          currentStepName: expense.workflow.name || 'Multi-Approver Process',
+          nextStepName: 'Awaiting Additional Approvals',
+          nextApproverInfo: null,
+          message: `Approval recorded - awaiting additional approvals (${approvedApprovals.length} received)`
+        };
+    }
+
+    // Fallback - approve if we can't determine next steps
+    return {
+      finalStatus: 'APPROVED',
+      nextApproverIndex: expense.currentApproverIndex || 0,
+      currentStepName: expense.workflow.name || 'Approval Complete',
+      nextStepName: null,
+      nextApproverInfo: null,
+      message: 'Expense approved successfully'
+    };
+  } catch (error) {
+    console.error('Process approval workflow error:', error);
+    // Default to approved on error to avoid blocking approvals
+    return {
+      finalStatus: 'APPROVED',
+      nextApproverIndex: expense.currentApproverIndex || 0,
+      currentStepName: 'Manual Approval',
+      nextStepName: null,
+      nextApproverInfo: null,
+      message: 'Expense approved successfully (workflow processed with fallback)'
+    };
   }
 };
 

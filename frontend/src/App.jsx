@@ -10,6 +10,9 @@ import { USER_ROLES } from './config/constants';
 import Login from './pages/auth/Login';
 import Signup from './pages/auth/SimpleSignup';
 
+// Home page
+import Home from './pages/Home';
+
 // Admin pages
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminUsers from './pages/admin/Users';
@@ -43,7 +46,10 @@ function App() {
       <Router>
         <div className="App">
           <Routes>
-            {/* Public routes */}
+            {/* Public home route - accessible to everyone */}
+            <Route path="/" element={<Home />} />
+            
+            {/* Public auth routes */}
             <Route
               path="/"
               element={
