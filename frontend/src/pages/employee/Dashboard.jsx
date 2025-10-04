@@ -125,7 +125,7 @@ const EmployeeDashboard = () => {
           </p>
         </div>
         <Link
-          to="/dashboard/expenses/new"
+          to="/dashboard/employee/submit"
           className="btn-primary flex items-center space-x-2"
         >
           <PlusIcon className="h-5 w-5" />
@@ -260,7 +260,7 @@ const EmployeeDashboard = () => {
             {/* Quick Action Cards */}
             <div className="space-y-4">
               <Link
-                to="/dashboard/expenses/new"
+                to="/dashboard/employee/submit"
                 className="group block p-4 bg-white rounded-lg border-2 border-primary-200 hover:border-primary-400 hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1"
               >
                 <div className="flex items-center space-x-3">
@@ -275,7 +275,7 @@ const EmployeeDashboard = () => {
               </Link>
               
               <Link
-                to="/dashboard/expenses"
+                to="/dashboard/employee/expenses"
                 className="group block p-4 bg-white rounded-lg border-2 border-gray-200 hover:border-gray-400 hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1"
               >
                 <div className="flex items-center space-x-3">
@@ -329,7 +329,7 @@ const EmployeeDashboard = () => {
             <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">Recent Expenses</h3>
               <Link
-                to="/dashboard/expenses"
+                to="/dashboard/employee/expenses"
                 className="text-sm text-primary-600 hover:text-primary-800"
               >
                 View all
@@ -386,7 +386,7 @@ const EmployeeDashboard = () => {
                   <p className="text-gray-500 mb-4">
                     Get started by creating your first expense report.
                   </p>
-                  <Link to="/dashboard/expenses/new" className="btn-primary">
+                  <Link to="/dashboard/employee/submit" className="btn-primary">
                     Create Expense
                   </Link>
                 </div>
@@ -404,7 +404,7 @@ const EmployeeDashboard = () => {
             </div>
             <div className="p-6 space-y-4">
               <Link
-                to="/dashboard/expenses/new"
+                to="/dashboard/employee/submit"
                 className="w-full flex items-center justify-center px-4 py-3 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
               >
                 <PlusIcon className="h-5 w-5 mr-2" />
@@ -412,7 +412,7 @@ const EmployeeDashboard = () => {
               </Link>
               
               <Link
-                to="/dashboard/expenses"
+                to="/dashboard/employee/expenses"
                 className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
               >
                 <DocumentTextIcon className="h-5 w-5 mr-2" />

@@ -173,7 +173,7 @@ const NewExpense = () => {
       
       if (response.data.success) {
         toast.success('Expense created successfully!');
-        navigate('/employee/expenses');
+        navigate('/dashboard/expenses');
       } else {
         throw new Error(response.data.message || 'Failed to create expense');
       }
@@ -209,7 +209,7 @@ const NewExpense = () => {
       
       if (response.data.success) {
         toast.success('Expense saved as draft!');
-        navigate('/employee/expenses');
+        navigate('/dashboard/expenses');
       } else {
         throw new Error(response.data.message || 'Failed to save expense');
       }
@@ -229,11 +229,11 @@ const NewExpense = () => {
         <div className="mb-8">
           <div className="flex items-center space-x-4 mb-4">
             <button
-              onClick={() => navigate('/employee/expenses')}
+              onClick={() => navigate('/dashboard/employee')}
               className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
             >
               <ArrowLeftIcon className="h-4 w-4 mr-2" />
-              Back to Expenses
+              Back to Dashboard
             </button>
           </div>
           <div className="bg-gradient-to-r from-primary-600 to-primary-700 rounded-lg px-8 py-6 text-white shadow-lg">
@@ -558,7 +558,7 @@ const NewExpense = () => {
             <div className="flex flex-col sm:flex-row justify-between items-center space-y-4 sm:space-y-0 sm:space-x-4">
               <button
                 type="button"
-                onClick={() => navigate('/employee/expenses')}
+                onClick={() => navigate('/dashboard/expenses')}
                 className="w-full sm:w-auto inline-flex items-center justify-center px-6 py-3 border border-gray-300 shadow-sm text-base font-medium rounded-lg text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 transition-colors"
                 disabled={loading}
               >

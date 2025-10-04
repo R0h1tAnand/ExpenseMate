@@ -99,11 +99,24 @@ const ManagerDashboard = () => {
         const last7Days = new Date();
         last7Days.setDate(last7Days.getDate() - 7);
         
-        const approvalsResponse = await apiService.expenses.getAll({
+        // Get approved expenses
+        const approvedResponse = await apiService.expenses.getAll({
           dateFrom: last7Days.toISOString().split('T')[0],
-          status: 'APPROVED,REJECTED',
+          status: 'APPROVED',
         });
-        approvals = Array.isArray(approvalsResponse.data.data) ? approvalsResponse.data.data : [];
+        
+        // Get rejected expenses
+        const rejectedResponse = await apiService.expenses.getAll({
+          dateFrom: last7Days.toISOString().split('T')[0],
+          status: 'REJECTED',
+        });
+        
+        const approvedExpenses = Array.isArray(approvedResponse.data.data) ? approvedResponse.data.data : [];
+        const rejectedExpenses = Array.isArray(rejectedResponse.data.data) ? rejectedResponse.data.data : [];
+        
+        // Combine and sort by date
+        approvals = [...approvedExpenses, ...rejectedExpenses]
+          .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
       } catch (error) {
         console.error('Failed to fetch recent approvals:', error);
         approvals = [];
@@ -219,20 +232,7 @@ const ManagerDashboard = () => {
             </div>
           </div>
         </div>
-
-        {/* Debug Panel - Remove in production */}
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
-          <h4 className="text-sm font-medium text-yellow-800 mb-2">Debug Information:</h4>
-          <div className="text-xs text-yellow-700 space-y-1">
-            <p>User Role: {user?.role}</p>
-            <p>User ID: {user?.userId}</p>
-            <p>Team Members Count: {teamMembers.length}</p>
-            <p>Pending Expenses Count: {pendingExpenses.length}</p>
-            <p>All Team Expenses Count: {allTeamExpenses.length}</p>
-            <p>Recent Approvals Count: {recentApprovals.length}</p>
-          </div>
-        </div>
-
+        
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">

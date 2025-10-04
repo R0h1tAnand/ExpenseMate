@@ -95,7 +95,13 @@ const getExpenses = async (req, res) => {
 
     // Add filters
     if (status) {
-      whereClause.status = status;
+      // Handle comma-separated status values
+      if (status.includes(',')) {
+        const statusArray = status.split(',').map(s => s.trim());
+        whereClause.status = { [Op.in]: statusArray };
+      } else {
+        whereClause.status = status;
+      }
     }
     
     if (category) {
