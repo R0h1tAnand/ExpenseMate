@@ -9,7 +9,6 @@ import {
   DocumentArrowDownIcon,
   CalendarIcon,
   UserIcon,
-  BuildingOfficeIcon,
 } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
 
@@ -25,10 +24,8 @@ const AdminExpenses = () => {
     dateFrom: '',
     dateTo: '',
     submittedBy: '',
-    department: '',
   });
   const [users, setUsers] = useState([]);
-  const [departments, setDepartments] = useState([]);
   const [stats, setStats] = useState({
     total: 0,
     pending: 0,
@@ -40,7 +37,6 @@ const AdminExpenses = () => {
   useEffect(() => {
     fetchExpenses();
     fetchUsers();
-    fetchDepartments();
   }, [filters]);
 
   const fetchExpenses = async () => {
@@ -54,7 +50,6 @@ const AdminExpenses = () => {
       if (filters.dateFrom) params.dateFrom = filters.dateFrom;
       if (filters.dateTo) params.dateTo = filters.dateTo;
       if (filters.submittedBy) params.submittedBy = filters.submittedBy;
-      if (filters.department) params.department = filters.department;
 
       const response = await apiService.expenses.getAll(params);
       const expenseData = response.data.data;
@@ -85,15 +80,6 @@ const AdminExpenses = () => {
       setUsers(response.data.data);
     } catch (error) {
       console.error('Failed to fetch users:', error);
-    }
-  };
-
-  const fetchDepartments = async () => {
-    try {
-      const response = await apiService.departments.getAll();
-      setDepartments(response.data.data || []);
-    } catch (error) {
-      console.error('Failed to fetch departments:', error);
     }
   };
 
@@ -482,8 +468,8 @@ const AdminExpenses = () => {
               className="input-field"
             >
               <option value="">All Categories</option>
-              {EXPENSE_CATEGORIES.map(category => (
-                <option key={category} value={category}>{category}</option>
+              {Object.values(EXPENSE_CATEGORIES).map(category => (
+                <option key={category} value={category}>{category.replace('_', ' ')}</option>
               ))}
             </select>
           </div>
@@ -530,23 +516,6 @@ const AdminExpenses = () => {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Department
-            </label>
-            <select
-              value={filters.department}
-              onChange={(e) => setFilters({ ...filters, department: e.target.value })}
-              className="input-field"
-            >
-              <option value="">All Departments</option>
-              {departments.map(dept => (
-                <option key={dept.departmentId} value={dept.departmentId}>
-                  {dept.name}
-                </option>
-              ))}
-            </select>
-          </div>
         </div>
       </div>
 

@@ -15,11 +15,26 @@ import toast from 'react-hot-toast';
 const WorkflowManagement = () => {
   const { company } = useAuth();
   const [workflows, setWorkflows] = useState([]);
-  const [departments, setDepartments] = useState([]);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingWorkflow, setEditingWorkflow] = useState(null);
+  
+  // Predefined departments list
+  const departments = [
+    { id: 'TRAVEL', name: 'Travel' },
+    { id: 'ACCOMMODATION', name: 'Accommodation' },
+    { id: 'MEALS', name: 'Meals' },
+    { id: 'TRANSPORTATION', name: 'Transportation' },
+    { id: 'OFFICE_SUPPLIES', name: 'Office Supplies' },
+    { id: 'EQUIPMENT', name: 'Equipment' },
+    { id: 'SOFTWARE', name: 'Software' },
+    { id: 'TRAINING', name: 'Training' },
+    { id: 'MARKETING', name: 'Marketing' },
+    { id: 'ENTERTAINMENT', name: 'Entertainment' },
+    { id: 'OTHER', name: 'Other' },
+  ];
+  
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -38,7 +53,6 @@ const WorkflowManagement = () => {
 
   useEffect(() => {
     fetchWorkflows();
-    fetchDepartments();
     fetchUsers();
   }, []);
 
@@ -52,15 +66,6 @@ const WorkflowManagement = () => {
       toast.error('Failed to load workflows');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchDepartments = async () => {
-    try {
-      const response = await apiService.departments.getAll();
-      setDepartments(response.data.data || []);
-    } catch (error) {
-      console.error('Failed to fetch departments:', error);
     }
   };
 
@@ -253,7 +258,7 @@ const WorkflowManagement = () => {
                   >
                     <option value="">All Departments</option>
                     {departments.map((dept) => (
-                      <option key={dept.departmentId} value={dept.departmentId}>
+                      <option key={dept.id} value={dept.id}>
                         {dept.name}
                       </option>
                     ))}
