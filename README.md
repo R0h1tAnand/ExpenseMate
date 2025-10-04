@@ -1,4 +1,4 @@
-# 💼 ExpenseMate - Expense Management System
+# ExpenseMate - Expense Management System
 
 A comprehensive, modern expense management solution built with React and Node.js, designed to streamline expense reporting, approval workflows, and financial tracking for organizations of all sizes.
 
