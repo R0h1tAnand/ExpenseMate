@@ -244,6 +244,83 @@ const EmployeeDashboard = () => {
         </div>
       </div>
 
+      {/* Quick Expense Creation Section */}
+      <div className="bg-gradient-to-r from-primary-50 to-blue-50 rounded-xl shadow-lg border border-primary-100 overflow-hidden">
+        <div className="px-6 py-4 bg-gradient-to-r from-primary-600 to-blue-600">
+          <h3 className="text-xl font-semibold text-white flex items-center">
+            <div className="w-8 h-8 bg-white bg-opacity-20 rounded-lg flex items-center justify-center mr-3">
+              <PlusIcon className="h-5 w-5 text-white" />
+            </div>
+            Quick Expense Submission
+          </h3>
+          <p className="text-primary-100 mt-1">Create and submit your expenses with ease</p>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Quick Action Cards */}
+            <div className="space-y-4">
+              <Link
+                to="/dashboard/expenses/new"
+                className="group block p-4 bg-white rounded-lg border-2 border-primary-200 hover:border-primary-400 hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1"
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-gradient-to-r from-primary-500 to-primary-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <PlusIcon className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 group-hover:text-primary-600">Create New Expense</h4>
+                    <p className="text-sm text-gray-600">Submit a new expense report</p>
+                  </div>
+                </div>
+              </Link>
+              
+              <Link
+                to="/dashboard/expenses"
+                className="group block p-4 bg-white rounded-lg border-2 border-gray-200 hover:border-gray-400 hover:shadow-lg transition-all duration-200 transform hover:-translate-y-1"
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-gradient-to-r from-gray-500 to-gray-600 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <DocumentTextIcon className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 group-hover:text-gray-600">View All Expenses</h4>
+                    <p className="text-sm text-gray-600">Manage your expense reports</p>
+                  </div>
+                </div>
+              </Link>
+            </div>
+
+            {/* Tips Section */}
+            <div className="bg-white rounded-lg p-4 border border-blue-200">
+              <h4 className="font-semibold text-blue-900 mb-3 flex items-center">
+                <svg className="h-5 w-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+                💡 Pro Tips
+              </h4>
+              <ul className="space-y-2 text-sm text-blue-800">
+                <li className="flex items-start">
+                  <span className="w-2 h-2 bg-blue-400 rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                  Always attach receipts for faster approval
+                </li>
+                <li className="flex items-start">
+                  <span className="w-2 h-2 bg-blue-400 rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                  Submit within 30 days of expense date
+                </li>
+                <li className="flex items-start">
+                  <span className="w-2 h-2 bg-blue-400 rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                  Provide detailed business justification
+                </li>
+                <li className="flex items-start">
+                  <span className="w-2 h-2 bg-blue-400 rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                  Check company expense policy limits
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         {/* Recent Expenses */}

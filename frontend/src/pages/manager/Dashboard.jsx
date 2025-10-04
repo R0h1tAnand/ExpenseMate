@@ -9,7 +9,12 @@ import {
   UserGroupIcon,
   CalendarIcon,
   EyeIcon,
+  DocumentTextIcon,
+  BellIcon,
+  PlusIcon,
+  ArrowRightIcon,
 } from '@heroicons/react/24/outline';
+import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 const ManagerDashboard = () => {
@@ -25,6 +30,7 @@ const ManagerDashboard = () => {
   const [recentApprovals, setRecentApprovals] = useState([]);
   const [teamMembers, setTeamMembers] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [quickApprovalLoading, setQuickApprovalLoading] = useState({});
 
   useEffect(() => {
     fetchDashboardData();
@@ -44,36 +50,32 @@ const ManagerDashboard = () => {
       const team = Array.isArray(teamResponse.data.data) ? teamResponse.data.data : [];
       setTeamMembers(team);
 
-      // Fetch team expenses for current month (only if we have team members)
+      // Fetch team expenses for current month
       let teamExpenses = [];
-      if (team.length > 0) {
-        const currentMonth = new Date();
-        const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-        const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
-        
-        try {
-          const expensesResponse = await apiService.expenses.getAll({
-            dateFrom: firstDay.toISOString().split('T')[0],
-            dateTo: lastDay.toISOString().split('T')[0],
-            submittedBy: team.map(member => member.userId).join(','),
-          });
-          teamExpenses = Array.isArray(expensesResponse.data.data) ? expensesResponse.data.data : [];
-        } catch (error) {
-          console.error('Failed to fetch team expenses:', error);
-          teamExpenses = [];
-        }
+      const currentMonth = new Date();
+      const firstDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+      const lastDay = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
+      
+      try {
+        const expensesResponse = await apiService.expenses.getAll({
+          dateFrom: firstDay.toISOString().split('T')[0],
+          dateTo: lastDay.toISOString().split('T')[0],
+        });
+        teamExpenses = Array.isArray(expensesResponse.data.data) ? expensesResponse.data.data : [];
+      } catch (error) {
+        console.error('Failed to fetch team expenses:', error);
+        teamExpenses = [];
       }
 
-      // Get recent approvals (approved/rejected in last 30 days)
+      // Get recent approvals (approved/rejected in last 7 days)
       let approvals = [];
       try {
-        const last30Days = new Date();
-        last30Days.setDate(last30Days.getDate() - 30);
+        const last7Days = new Date();
+        last7Days.setDate(last7Days.getDate() - 7);
         
         const approvalsResponse = await apiService.expenses.getAll({
-          dateFrom: last30Days.toISOString().split('T')[0],
+          dateFrom: last7Days.toISOString().split('T')[0],
           status: 'APPROVED,REJECTED',
-          approver: user.userId,
         });
         approvals = Array.isArray(approvalsResponse.data.data) ? approvalsResponse.data.data : [];
       } catch (error) {
@@ -106,362 +108,411 @@ const ManagerDashboard = () => {
 
   const handleQuickAction = async (expenseId, action) => {
     try {
+      setQuickApprovalLoading(prev => ({ ...prev, [expenseId]: true }));
+      
       const payload = {
-        comments: `Quick ${action.toLowerCase()} from dashboard`,
+        comments: `Quick ${action.toLowerCase()} from manager dashboard`,
       };
 
       if (action === 'APPROVED') {
         await apiService.expenses.approve(expenseId, payload);
+        toast.success('Expense approved successfully!');
       } else if (action === 'REJECTED') {
         await apiService.expenses.reject(expenseId, payload);
+        toast.success('Expense rejected successfully!');
       }
       
-      toast.success(`Expense ${action.toLowerCase()} successfully`);
-      fetchDashboardData(); // Refresh data
+      // Refresh data
+      fetchDashboardData();
     } catch (error) {
       console.error(`Failed to ${action} expense:`, error);
-      toast.error(`Failed to ${action.toLowerCase()} expense`);
+      const errorMessage = error.response?.data?.message || `Failed to ${action.toLowerCase()} expense`;
+      toast.error(errorMessage);
+    } finally {
+      setQuickApprovalLoading(prev => ({ ...prev, [expenseId]: false }));
     }
   };
 
   const getStatusBadgeClass = (status) => {
     switch (status) {
       case 'APPROVED':
-        return 'status-badge-approved';
+        return 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 border border-green-200';
       case 'PENDING':
-        return 'status-badge-pending';
+        return 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200';
       case 'REJECTED':
-        return 'status-badge-rejected';
+        return 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200';
       case 'DRAFT':
-        return 'status-badge-draft';
+        return 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200';
       default:
-        return 'status-badge-draft';
+        return 'inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800 border border-gray-200';
+    }
+  };
+
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case 'APPROVED':
+        return <CheckCircleIcon className="h-4 w-4 text-green-600" />;
+      case 'PENDING':
+        return <ClockIcon className="h-4 w-4 text-yellow-600" />;
+      case 'REJECTED':
+        return <XCircleIcon className="h-4 w-4 text-red-600" />;
+      case 'DRAFT':
+        return <DocumentTextIcon className="h-4 w-4 text-gray-600" />;
+      default:
+        return <DocumentTextIcon className="h-4 w-4 text-gray-600" />;
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-primary-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 text-lg">Loading manager dashboard...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Manager Dashboard</h1>
-        <p className="text-gray-600">
-          Welcome back, {user?.firstName}! Here's your team's expense overview.
-        </p>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-5">
-        <div className="card p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0 p-3 rounded-lg bg-yellow-500">
-              <ClockIcon className="h-6 w-6 text-white" />
-            </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Pending Approvals
-                </dt>
-                <dd className="text-lg font-medium text-gray-900">
-                  {stats.pendingApprovals}
-                </dd>
-              </dl>
-            </div>
-          </div>
-        </div>
-
-        <div className="card p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0 p-3 rounded-lg bg-green-500">
-              <CheckCircleIcon className="h-6 w-6 text-white" />
-            </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Approved This Month
-                </dt>
-                <dd className="text-lg font-medium text-gray-900">
-                  {stats.approvedThisMonth}
-                </dd>
-              </dl>
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="bg-gradient-to-r from-purple-600 to-indigo-600 rounded-xl shadow-lg p-8 text-white">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center">
+              <div>
+                <h1 className="text-3xl font-bold mb-2">Manager Dashboard</h1>
+                <p className="text-purple-100 text-lg">
+                  Welcome back, {user?.firstName}! Manage your team's expense approvals.
+                </p>
+              </div>
+              <div className="mt-4 sm:mt-0 flex items-center space-x-4">
+                {stats.pendingApprovals > 0 && (
+                  <div className="bg-yellow-500 text-white px-4 py-2 rounded-lg flex items-center space-x-2 shadow-lg">
+                    <BellIcon className="h-5 w-5" />
+                    <span className="font-medium">{stats.pendingApprovals} Pending</span>
+                  </div>
+                )}
+                <Link
+                  to="/dashboard/approvals"
+                  className="inline-flex items-center px-6 py-2 bg-white text-purple-600 rounded-lg font-medium hover:bg-gray-100 transition-colors shadow-lg"
+                >
+                  View All Approvals
+                  <ArrowRightIcon className="h-5 w-5 ml-2" />
+                </Link>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="card p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0 p-3 rounded-lg bg-red-500">
-              <XCircleIcon className="h-6 w-6 text-white" />
-            </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Rejected This Month
-                </dt>
-                <dd className="text-lg font-medium text-gray-900">
-                  {stats.rejectedThisMonth}
-                </dd>
-              </dl>
+        {/* Stats Dashboard */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <ClockIcon className="h-6 w-6 text-yellow-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Pending Approvals</p>
+                <p className="text-2xl font-bold text-yellow-600">{stats.pendingApprovals}</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="card p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0 p-3 rounded-lg bg-blue-500">
-              <UserGroupIcon className="h-6 w-6 text-white" />
-            </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Team Expenses
-                </dt>
-                <dd className="text-lg font-medium text-gray-900">
-                  {stats.teamExpenses}
-                </dd>
-              </dl>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                <CheckCircleIcon className="h-6 w-6 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Approved This Month</p>
+                <p className="text-2xl font-bold text-green-600">{stats.approvedThisMonth}</p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="card p-6">
-          <div className="flex items-center">
-            <div className="flex-shrink-0 p-3 rounded-lg bg-purple-500">
-              <CurrencyDollarIcon className="h-6 w-6 text-white" />
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                <XCircleIcon className="h-6 w-6 text-red-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Rejected This Month</p>
+                <p className="text-2xl font-bold text-red-600">{stats.rejectedThisMonth}</p>
+              </div>
             </div>
-            <div className="ml-5 w-0 flex-1">
-              <dl>
-                <dt className="text-sm font-medium text-gray-500 truncate">
-                  Total Approved
-                </dt>
-                <dd className="text-lg font-medium text-gray-900">
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                <UserGroupIcon className="h-6 w-6 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Team Members</p>
+                <p className="text-2xl font-bold text-blue-600">{teamMembers.length}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+            <div className="flex items-center">
+              <div className="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
+                <CurrencyDollarIcon className="h-6 w-6 text-emerald-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-500">Total Approved</p>
+                <p className="text-lg font-bold text-emerald-600">
                   {company?.defaultCurrency} {stats.totalAmount.toLocaleString()}
-                </dd>
-              </dl>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Pending Approvals */}
-        <div className="card">
-          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-            <h3 className="text-lg font-medium text-gray-900">Pending Approvals</h3>
-            <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs font-medium rounded-full">
-              {stats.pendingApprovals} pending
-            </span>
-          </div>
-          <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
-            {pendingExpenses.length > 0 ? (
-              pendingExpenses.map((expense) => (
-                <div key={expense.expenseId} className="p-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center space-x-3">
-                      <div className="flex-shrink-0 h-8 w-8">
-                        <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
-                          <span className="text-primary-600 font-medium text-xs">
-                            {expense.submittedBy?.firstName[0]}{expense.submittedBy?.lastName[0]}
-                          </span>
-                        </div>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {expense.submittedBy?.firstName} {expense.submittedBy?.lastName}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(expense.submissionDate).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-medium text-gray-900">
-                        {company?.defaultCurrency} {parseFloat(expense.amountInDefaultCurrency || 0).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="mb-3">
-                    <p className="text-sm font-medium text-gray-900">
-                      {expense.description}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      {expense.category} • {expense.merchant || 'No merchant'}
-                    </p>
-                  </div>
-
-                  <div className="flex justify-between items-center">
-                    <div className="flex space-x-2">
-                      <button
-                        onClick={() => handleQuickAction(expense.expenseId, 'APPROVED')}
-                        className="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full hover:bg-green-200"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => handleQuickAction(expense.expenseId, 'REJECTED')}
-                        className="px-3 py-1 bg-red-100 text-red-800 text-xs font-medium rounded-full hover:bg-red-200"
-                      >
-                        Reject
-                      </button>
-                    </div>
-                    <button className="text-primary-600 hover:text-primary-800 text-sm">
-                      <EyeIcon className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="p-8 text-center">
-                <ClockIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No pending approvals</h3>
-                <p className="text-gray-500">
-                  All caught up! No expenses waiting for your approval.
                 </p>
               </div>
-            )}
+            </div>
           </div>
         </div>
 
-        {/* Recent Approvals */}
-        <div className="card">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Recent Approvals</h3>
-          </div>
-          <div className="divide-y divide-gray-200 max-h-96 overflow-y-auto">
-            {recentApprovals.length > 0 ? (
-              recentApprovals.map((expense) => (
-                <div key={expense.expenseId} className="p-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-3">
-                      <div className="flex-shrink-0 h-8 w-8">
-                        <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
-                          <span className="text-primary-600 font-medium text-xs">
-                            {expense.submittedBy?.firstName[0]}{expense.submittedBy?.lastName[0]}
-                          </span>
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+          {/* Pending Approvals */}
+          <div className="xl:col-span-2">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gradient-to-r from-yellow-50 to-orange-50 px-6 py-4 border-b border-gray-200">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xl font-semibold text-gray-900 flex items-center">
+                    <div className="w-8 h-8 bg-yellow-500 rounded-lg flex items-center justify-center mr-3">
+                      <ClockIcon className="h-5 w-5 text-white" />
+                    </div>
+                    Pending Approvals
+                  </h3>
+                  <Link
+                    to="/dashboard/approvals"
+                    className="text-sm text-purple-600 hover:text-purple-800 font-medium"
+                  >
+                    View All ({stats.pendingApprovals})
+                  </Link>
+                </div>
+                <p className="text-gray-600 mt-1">Review and approve employee expense submissions</p>
+              </div>
+
+              <div className="divide-y divide-gray-200">
+                {pendingExpenses.length > 0 ? (
+                  pendingExpenses.map((expense) => (
+                    <div key={expense.expenseId} className="p-6 hover:bg-gray-50 transition-colors">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start space-x-4 flex-1">
+                          <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                            <CurrencyDollarIcon className="h-6 w-6 text-yellow-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-gray-900 mb-1">
+                              {expense.description}
+                            </h4>
+                            <div className="flex items-center text-sm text-gray-500 space-x-4 mb-2">
+                              <span className="flex items-center">
+                                <UserIcon className="h-4 w-4 mr-1" />
+                                {expense.submittedBy?.firstName} {expense.submittedBy?.lastName}
+                              </span>
+                              <span className="flex items-center">
+                                <CalendarIcon className="h-4 w-4 mr-1" />
+                                {new Date(expense.expenseDate || expense.submissionDate).toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <span className="text-lg font-bold text-gray-900">
+                                  {company?.defaultCurrency} {parseFloat(expense.amountInDefaultCurrency || 0).toLocaleString()}
+                                </span>
+                                {expense.originalCurrency !== company?.defaultCurrency && (
+                                  <span className="text-sm text-gray-500 ml-2">
+                                    ({expense.originalCurrency} {parseFloat(expense.originalAmount || 0).toLocaleString()})
+                                  </span>
+                                )}
+                                <span className="ml-3 text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                                  {expense.category}
+                                </span>
+                              </div>
+                            </div>
+                            {expense.notes && (
+                              <p className="text-sm text-gray-600 mt-2 bg-gray-50 p-3 rounded-lg">
+                                {expense.notes.length > 100 ? `${expense.notes.substring(0, 100)}...` : expense.notes}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col space-y-2 ml-4">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => handleQuickAction(expense.expenseId, 'APPROVED')}
+                              disabled={quickApprovalLoading[expense.expenseId]}
+                              className="inline-flex items-center px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors disabled:opacity-50"
+                            >
+                              {quickApprovalLoading[expense.expenseId] ? (
+                                <div className="animate-spin rounded-full h-3 w-3 border-b border-green-600 mr-1"></div>
+                              ) : (
+                                <CheckCircleIcon className="h-3 w-3 mr-1" />
+                              )}
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleQuickAction(expense.expenseId, 'REJECTED')}
+                              disabled={quickApprovalLoading[expense.expenseId]}
+                              className="inline-flex items-center px-3 py-1.5 text-xs font-medium bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50"
+                            >
+                              {quickApprovalLoading[expense.expenseId] ? (
+                                <div className="animate-spin rounded-full h-3 w-3 border-b border-red-600 mr-1"></div>
+                              ) : (
+                                <XCircleIcon className="h-3 w-3 mr-1" />
+                              )}
+                              Reject
+                            </button>
+                          </div>
+                          <Link
+                            to={`/dashboard/expenses/${expense.expenseId}`}
+                            className="inline-flex items-center justify-center px-3 py-1.5 text-xs font-medium text-purple-700 bg-purple-100 rounded-lg hover:bg-purple-200 transition-colors"
+                          >
+                            <EyeIcon className="h-3 w-3 mr-1" />
+                            Details
+                          </Link>
                         </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-medium text-gray-900">
-                          {expense.submittedBy?.firstName} {expense.submittedBy?.lastName}
-                        </p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(expense.submissionDate).toLocaleDateString()}
-                        </p>
-                      </div>
                     </div>
-                    <span className={getStatusBadgeClass(expense.status)}>
-                      {expense.status}
-                    </span>
-                  </div>
-                  
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-sm text-gray-900">
-                        {expense.description}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {expense.category}
-                      </p>
+                  ))
+                ) : (
+                  <div className="p-12 text-center">
+                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <CheckCircleIcon className="h-8 w-8 text-green-600" />
                     </div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {company?.defaultCurrency} {parseFloat(expense.amountInDefaultCurrency || 0).toLocaleString()}
-                    </p>
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">All caught up!</h3>
+                    <p className="text-gray-500">No pending expense approvals at the moment.</p>
                   </div>
-                </div>
-              ))
-            ) : (
-              <div className="p-8 text-center">
-                <CheckCircleIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No recent approvals</h3>
-                <p className="text-gray-500">
-                  Your recent approval activity will appear here.
-                </p>
+                )}
               </div>
-            )}
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Team Members */}
-      <div className="card">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Your Team</h3>
-        </div>
-        <div className="p-6">
-          {teamMembers.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {teamMembers.map((member) => (
-                <div key={member.userId} className="flex items-center space-x-3 p-4 border border-gray-200 rounded-lg">
-                  <div className="flex-shrink-0 h-10 w-10">
-                    <div className="h-10 w-10 rounded-full bg-primary-100 flex items-center justify-center">
-                      <span className="text-primary-600 font-medium text-sm">
-                        {member.firstName[0]}{member.lastName[0]}
-                      </span>
-                    </div>
+          {/* Team Overview & Recent Activity */}
+          <div className="space-y-8">
+            {/* Team Overview */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
+                    <UserGroupIcon className="h-5 w-5 text-white" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
-                      {member.firstName} {member.lastName}
-                    </p>
-                    <p className="text-sm text-gray-500 truncate">
-                      {member.email}
-                    </p>
-                    <p className="text-xs text-gray-400">
-                      {member.department?.name || 'No department'}
-                    </p>
+                  Team Overview
+                </h3>
+              </div>
+              <div className="p-6">
+                {teamMembers.length > 0 ? (
+                  <div className="space-y-4">
+                    {teamMembers.slice(0, 5).map((member) => (
+                      <div key={member.userId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center">
+                            <span className="text-white text-sm font-medium">
+                              {member.firstName?.[0]}{member.lastName?.[0]}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {member.firstName} {member.lastName}
+                            </p>
+                            <p className="text-sm text-gray-500">{member.email}</p>
+                          </div>
+                        </div>
+                        <span className="text-xs text-gray-500 bg-white px-2 py-1 rounded">
+                          {member.role}
+                        </span>
+                      </div>
+                    ))}
+                    {teamMembers.length > 5 && (
+                      <p className="text-sm text-gray-500 text-center">
+                        +{teamMembers.length - 5} more team members
+                      </p>
+                    )}
                   </div>
-                </div>
-              ))}
+                ) : (
+                  <div className="text-center py-6">
+                    <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-500">No team members assigned yet.</p>
+                  </div>
+                )}
+              </div>
             </div>
-          ) : (
-            <div className="text-center py-8">
-              <UserGroupIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No team members</h3>
-              <p className="text-gray-500">
-                You don't have any team members assigned yet.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="card p-6 hover:shadow-medium transition-shadow cursor-pointer">
-          <div className="flex items-center space-x-3">
-            <ClockIcon className="h-8 w-8 text-primary-600" />
-            <div>
-              <h3 className="text-lg font-medium text-gray-900">Approve Expenses</h3>
-              <p className="text-sm text-gray-500">Review and approve pending expenses</p>
+            {/* Recent Activity */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gradient-to-r from-green-50 to-emerald-50 px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center mr-3">
+                    <DocumentTextIcon className="h-5 w-5 text-white" />
+                  </div>
+                  Recent Activity
+                </h3>
+              </div>
+              <div className="p-6">
+                {recentApprovals.length > 0 ? (
+                  <div className="space-y-4">
+                    {recentApprovals.map((expense) => (
+                      <div key={expense.expenseId} className="flex items-center space-x-3">
+                        <div className="flex-shrink-0">
+                          {getStatusIcon(expense.status)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-900 truncate">
+                            {expense.description}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {company?.defaultCurrency} {parseFloat(expense.amountInDefaultCurrency || 0).toLocaleString()} • 
+                            {new Date(expense.updatedAt || expense.submissionDate).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <span className={getStatusBadgeClass(expense.status)}>
+                          {expense.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <DocumentTextIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-gray-500">No recent activity to show.</p>
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
-        </div>
 
-        <div className="card p-6 hover:shadow-medium transition-shadow cursor-pointer">
-          <div className="flex items-center space-x-3">
-            <UserGroupIcon className="h-8 w-8 text-primary-600" />
-            <div>
-              <h3 className="text-lg font-medium text-gray-900">Team Overview</h3>
-              <p className="text-sm text-gray-500">View team expense reports</p>
-            </div>
-          </div>
-        </div>
+            {/* Quick Actions */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="bg-gradient-to-r from-purple-50 to-pink-50 px-6 py-4 border-b border-gray-200">
+                <h3 className="text-lg font-semibold text-gray-900">Quick Actions</h3>
+              </div>
+              <div className="p-6 space-y-3">
+                <Link
+                  to="/dashboard/approvals"
+                  className="w-full flex items-center justify-center px-4 py-3 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 transition-colors"
+                >
+                  <ClockIcon className="h-5 w-5 mr-2" />
+                  Review All Approvals
+                </Link>
+                
+                <Link
+                  to="/dashboard/team"
+                  className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                >
+                  <UserGroupIcon className="h-5 w-5 mr-2" />
+                  Manage Team
+                </Link>
 
-        <div className="card p-6 hover:shadow-medium transition-shadow cursor-pointer">
-          <div className="flex items-center space-x-3">
-            <CurrencyDollarIcon className="h-8 w-8 text-primary-600" />
-            <div>
-              <h3 className="text-lg font-medium text-gray-900">Expense Reports</h3>
-              <p className="text-sm text-gray-500">Generate detailed reports</p>
+                <Link
+                  to="/dashboard/expenses"
+                  className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors"
+                >
+                  <DocumentTextIcon className="h-5 w-5 mr-2" />
+                  View All Expenses
+                </Link>
+              </div>
             </div>
           </div>
         </div>
