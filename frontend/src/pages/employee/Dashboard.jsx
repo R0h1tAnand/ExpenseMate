@@ -309,7 +309,7 @@ const EmployeeDashboard = () => {
                   <p className="text-gray-500 mb-4">
                     Get started by creating your first expense report.
                   </p>
-                  <Link to="/dashboard/expenses/new" className="btn-primary">
+                  <Link to="/dashboard/employee/submit" className="btn-primary">
                     Create Expense
                   </Link>
                 </div>
