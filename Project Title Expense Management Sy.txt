@@ -1,0 +1,129 @@
+**Project Title:** Expense Management System
+
+**Tech Stack:**
+
+* **Frontend:** React + Vite, TailwindCSS
+* **Backend:** Node.js (Express.js)
+* **Database:** PostgreSQL
+* **Additional APIs:**
+
+  * Country & Currency API: `https://restcountries.com/v3.1/all?fields=name,currencies`
+  * Currency Conversion API: `https://api.exchangerate-api.com/v4/latest/{BASE_CURRENCY}`
+
+---
+
+## 🔹 Project Description (Wholesome View)
+
+This project is an **Expense Management System** designed to simplify and automate the process of expense submission, approval, and reimbursement in organizations. It eliminates manual tracking by introducing a **multi-role platform** where employees can upload expenses, managers can approve/reject them based on rules, and admins can set up workflows, roles, and conditional approval policies.
+
+The system supports **multi-level approvals, flexible approval flows (percentage-based, role-specific, hybrid), and multiple currencies**. It ensures transparency, accuracy, and faster approvals, making the reimbursement process seamless.
+
+The application will be divided into two parts:
+
+---
+
+## 🔹 Frontend (React + Vite, TailwindCSS)
+
+**Modules:**
+
+1. **Authentication & Signup/Login**
+
+   * Signup page with company auto-creation and currency setup.
+   * Login page with role-based redirection (Admin, Manager, Employee).
+   * Forgot password flow.
+
+2. **Admin Dashboard**
+
+   * Manage Users: Create Employees, Assign Managers, Define Roles.
+   * Configure Approval Rules:
+
+     * Percentage approvals (e.g., 60% approvers must approve).
+     * Specific approver-based rules (e.g., CFO approval auto-approves).
+     * Hybrid rules (mix of both).
+   * Manage Company Currency.
+   * View all expenses across organization.
+
+3. **Employee Dashboard**
+
+   * Submit expenses: Description, Amount (any currency), Category, Paid Date, Remarks.
+   * Upload receipt manually.
+   * View expense history (Draft, Pending Approval, Approved, Rejected).
+   * Status tracking with workflow progress.
+
+4. **Manager Dashboard**
+
+   * View expenses waiting for approval.
+   * Approve/Reject with comments.
+   * Escalation and sequence handling for multi-level approval.
+
+5. **UI/UX**
+
+   * Responsive design using TailwindCSS.
+   * Intuitive dashboards with role-specific views.
+   * Workflow indicators (Draft → Waiting Approval → Approved).
+
+---
+
+## 🔹 Backend (Node.js + PostgreSQL)
+
+**Modules:**
+
+1. **Authentication & User Management**
+
+   * JWT-based authentication.
+   * Role-based access control (Admin, Manager, Employee).
+   * Company auto-creation on signup with default currency setup.
+
+2. **Expense Management APIs**
+
+   * Create Expense (Employee).
+   * Update Expense (Before submission).
+   * Get Expenses by User.
+   * Get Expenses by Team (Manager).
+   * Expense Approval workflow (multi-step).
+
+3. **Approval Workflow Engine**
+
+   * Handles sequential approvals (Manager → Finance → Director).
+   * Supports percentage rules & specific approver rules.
+   * Supports hybrid rules (AND/OR logic).
+   * Updates expense status in real-time (Draft, Pending, Approved, Rejected).
+
+4. **Admin APIs**
+
+   * Manage users (CRUD).
+   * Assign roles.
+   * Configure approval rules.
+   * Override approvals (if needed).
+
+5. **Integrations**
+
+   * **Currency APIs:**
+
+     * Fetch company’s base currency.
+     * Convert submitted expense currency to company’s currency for consistency.
+
+6. **Database Design (PostgreSQL)**
+
+   * **Tables:**
+
+     * `users` (id, name, email, role, password, company_id)
+     * `companies` (id, name, base_currency)
+     * `expenses` (id, description, category, date, amount, currency, receipt_url, status, created_by)
+     * `approvals` (id, expense_id, approver_id, status, comments, timestamp)
+     * `approval_rules` (id, rule_type, threshold_percentage, required_approver_id, company_id)
+
+---
+
+## 🔹 Deliverables
+
+* Fully functional **Admin Panel**, **Employee View**, and **Manager View**.
+* Expense submission & approval workflows.
+* Currency conversion integration.
+* Role-based authentication with secure APIs.
+* Responsive, modern UI built with TailwindCSS.
+
+---
+
+**End Goal:**
+A production-ready **multi-role expense management system** where expense claims move seamlessly from submission to approval across defined workflows, ensuring efficiency, transparency, and compliance.
